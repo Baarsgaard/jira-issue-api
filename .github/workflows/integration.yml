@@ -1,0 +1,81 @@
+name: "Integration"
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - "**/src/**"
+      - "**/Cargo.toml"
+      - .cargo/**
+      - .github/workflows/integration.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "**/src/**"
+      - "**/Cargo.toml"
+      - .cargo/**
+      - .github/workflows/integration.yml
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: "Cargo test"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - x86_64-linux
+          # - x86_64-windows
+        feature:
+          - "server"
+          - "cloud"
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: self-hosted
+            build: x86_64-linux
+            ext: ""
+
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   build: x86_64-windows
+          #   ext: .exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-test-${{ matrix.build }}-${{ matrix.feature }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: cargo-test-${{ matrix.build }}-${{ matrix.feature }}-
+
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace --features ${{ matrix.feature }}
+
+  lint:
+    name: "Cargo check/clippy"
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - run: cargo check
+      - run: cargo clippy -- -D warnings
+
+  fmt:
+    name: "Cargo format"
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --verbose --check
