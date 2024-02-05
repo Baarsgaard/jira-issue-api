@@ -1,13 +1,27 @@
 use crate::types::*;
 use base64::{engine::general_purpose, Engine as _};
-use color_eyre::eyre::{eyre, Result, WrapErr};
-use reqwest::blocking::{Client, ClientBuilder, Response};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
-use reqwest::Url;
-use std::convert::From;
-use std::time::Duration;
+use reqwest::{Client, ClientBuilder, Response, Url};
+use std::{convert::From, time::Duration};
+use thiserror::Error;
 
-/// Used to configure JiraApiClient upon instantiation
+#[derive(Error, Debug)]
+pub enum JiraClientError {
+    #[error("Request failed")]
+    HttpError(#[from] reqwest::Error),
+    #[error("Body malformed or invalid")]
+    JiraRequestBodyError(String),
+    #[error("Unable to parse response")]
+    JiraResponseDeserializeError(#[from] Box<dyn std::error::Error>),
+    #[error("Unable to build JiraAPIClient struct")]
+    ConfigError(Box<dyn std::error::Error>),
+    #[error("Unable to parse Url")]
+    UrlParseError(Box<dyn std::error::Error>),
+    #[error("Unknown client error")]
+    Unknown,
+}
+
+/// JiraApiClient config object
 #[derive(Debug, Clone)]
 pub struct JiraClientConfig {
     pub credential: Credential,
@@ -97,24 +111,32 @@ impl JiraAPIClient {
     ///
     /// let client = JiraAPIClient::new(&jira_cfg).unwrap();
     /// ```
-    pub fn new(cfg: &JiraClientConfig) -> Result<JiraAPIClient> {
+    pub fn new(cfg: &JiraClientConfig) -> Result<JiraAPIClient, JiraClientError> {
         let client = ClientBuilder::new()
             .default_headers(JiraAPIClient::build_headers(&cfg.credential))
             .danger_accept_invalid_certs(cfg.tls_accept_invalid_certs)
             .https_only(true)
-            .timeout(Some(Duration::from_secs(cfg.timeout)))
-            .build()?;
+            .timeout(Duration::from_secs(cfg.timeout))
+            .build()
+            .map_err(|e| JiraClientError::ConfigError(Box::new(e)))?;
 
         Ok(JiraAPIClient {
-            url: Url::parse(cfg.url.as_str()).wrap_err("Unable to construct JiraApiClient.url")?,
+            url: Url::parse(cfg.url.as_str())
+                .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?,
             version: String::from("latest"),
             client,
             max_results: cfg.max_query_results,
         })
     }
 
-    pub fn query_issues(&self, query: &String) -> Result<PostIssueQueryResponseBody> {
-        let search_url = self.url.join("/rest/api/latest/search")?;
+    pub async fn query_issues(
+        &self,
+        query: &String,
+    ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
+        let search_url = self
+            .url
+            .join("/rest/api/latest/search")
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
         let body = PostIssueQueryBody {
             jql: query.to_owned(),
             start_at: 0,
@@ -127,63 +149,73 @@ impl JiraAPIClient {
             .post(search_url)
             .json(&body)
             .send()
-            .wrap_err("POST issue query failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
-        let query_response_body = response
+        response
             .json::<PostIssueQueryResponseBody>()
-            .wrap_err("Failed parsing issue query response")?;
-
-        let _ = match query_response_body.issues.clone() {
-            Some(i) if i.is_empty() => Err(eyre!("List of issues is empty"))?,
-            Some(i) => i,
-            None => Err(eyre!("List of issues is empty"))?,
-        };
-
-        Ok(query_response_body)
+            .await
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
     }
 
-    pub fn post_worklog(&self, issue_key: &IssueKey, body: PostWorklogBody) -> Result<Response> {
-        let worklog_url = self
+    pub async fn post_worklog(
+        &self,
+        issue_key: &IssueKey,
+        body: PostWorklogBody,
+    ) -> Result<Response, JiraClientError> {
+        let worklog_url = match self
             .url
-            .join(format!("/rest/api/latest/issue/{}/worklog", issue_key).as_str())?;
+            .join(format!("/rest/api/latest/issue/{}/worklog", issue_key).as_str())
+        {
+            Ok(url) => url,
+            Err(e) => Err(JiraClientError::UrlParseError(Box::new(e)))?,
+        };
 
         // If any pattern matches, do not prompt.
         if matches!(
             (body.time_spent.is_some(), body.time_spent_seconds.is_some()),
             (false, false) | (true, true)
         ) {
-            return Err(eyre!(
-                "Malformed body: time_spent and time_spent_seconds are botn 'Some()' or 'None'"
-            ));
+            return Err(JiraClientError::JiraRequestBodyError(String::from(
+                "time_spent and time_spent_seconds are both 'Some()' or 'None'",
+            )));
         }
 
-        let response = self
-            .client
+        self.client
             .post(worklog_url)
             .json(&body)
             .send()
-            .wrap_err("POST worklog request failed")?;
-        Ok(response)
+            .await
+            .map_err(JiraClientError::HttpError)
     }
 
-    pub fn post_comment(&self, issue_key: &IssueKey, body: PostCommentBody) -> Result<Response> {
+    pub async fn post_comment(
+        &self,
+        issue_key: &IssueKey,
+        body: PostCommentBody,
+    ) -> Result<Response, JiraClientError> {
         let comment_url = self
             .url
-            .join(format!("/rest/api/latest/issue/{}/comment", issue_key).as_str())?;
+            .join(format!("/rest/api/latest/issue/{}/comment", issue_key).as_str())
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
 
-        let response = self
-            .client
+        self.client
             .post(comment_url)
             .json(&body)
             .send()
-            .wrap_err("POST comment request failed")?;
-        Ok(response)
+            .await
+            .map_err(JiraClientError::HttpError)
     }
 
-    pub fn get_transitions(&self, issue_key: &IssueKey, expand: bool) -> Result<Vec<Transition>> {
+    pub async fn get_transitions(
+        &self,
+        issue_key: &IssueKey,
+        expand: bool,
+    ) -> Result<GetTransitionsBody, JiraClientError> {
         let mut transitions_url = self
             .url
-            .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())?;
+            .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
 
         if expand {
             transitions_url.set_query(Some("expand=transitions.fields"))
@@ -193,46 +225,50 @@ impl JiraAPIClient {
             .client
             .get(transitions_url)
             .send()
-            .wrap_err("Get transitions request failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
-        let transition_response_body = response
+        response
             .json::<GetTransitionsBody>()
-            .wrap_err("Failed parsing transition query response")?;
-
-        if transition_response_body.transitions.is_empty() {
-            return Err(eyre!("List of transitions is empty"));
-        }
-
-        Ok(transition_response_body.transitions)
+            .await
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
     }
 
-    pub fn post_transition(
+    pub async fn post_transition(
         &self,
         issue_key: &IssueKey,
         transition: &PostTransitionBody,
-    ) -> Result<Response> {
+    ) -> Result<Response, JiraClientError> {
         let transition_url = self
             .url
-            .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())?;
+            .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
 
         let response = self
             .client
             .post(transition_url)
             .json(transition)
             .send()
-            .wrap_err("POST transition request failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
         Ok(response)
     }
 
-    pub fn get_assignable_users(&self, params: &GetAssignableUserParams) -> Result<Vec<User>> {
-        let mut users_url = self.url.join("/rest/api/latest/user/assignable/search")?;
+    pub async fn get_assignable_users(
+        &self,
+        params: &GetAssignableUserParams,
+    ) -> Result<Vec<User>, JiraClientError> {
+        let mut users_url = self
+            .url
+            .join("/rest/api/latest/user/assignable/search")
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
         let mut query: String = format!("maxResults={}", params.max_results.unwrap_or(1000));
 
         if params.project.is_none() && params.issue_key.is_none() {
-            Err(eyre!(
-                "Both project and issue_key are None, define either to query for assignable users."
-            ))?
+            Err(JiraClientError::JiraRequestBodyError(String::from(
+                "Both project and issue_key are None, define either to query for assignable users.",
+            )))?
         }
 
         if let Some(issue_key) = params.issue_key.clone() {
@@ -250,20 +286,28 @@ impl JiraAPIClient {
 
         users_url.set_query(Some(query.as_str()));
 
-        let response = self.client.get(users_url).send().wrap_err(format!(
-            "Unable to fetch assignable users for issue: {:?}",
-            params
-        ))?;
+        let response = self
+            .client
+            .get(users_url)
+            .send()
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
         response
             .json::<Vec<User>>()
-            .wrap_err("Failed parsing assignable users list")
+            .await
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
     }
 
-    pub fn post_assign_user(&self, issue_key: &IssueKey, user: &User) -> Result<Response> {
+    pub async fn post_assign_user(
+        &self,
+        issue_key: &IssueKey,
+        user: &User,
+    ) -> Result<Response, JiraClientError> {
         let assign_url = self
             .url
-            .join(format!("/rest/api/latest/issue/{}/assignee", issue_key).as_str())?;
+            .join(format!("/rest/api/latest/issue/{}/assignee", issue_key).as_str())
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
 
         let body = PostAssignBody::from(user.clone());
 
@@ -272,14 +316,18 @@ impl JiraAPIClient {
             .put(assign_url)
             .json(&body)
             .send()
-            .wrap_err("PUT assign user request failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
         Ok(response)
     }
 
     /// cloud:  user.account_id
     /// server: user.name
-    pub fn get_user(&self, user: String) -> Result<User> {
-        let user_url = self.url.join("/rest/api/latest/user")?;
+    pub async fn get_user(&self, user: String) -> Result<User, JiraClientError> {
+        let user_url = self
+            .url
+            .join("/rest/api/latest/user")
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
 
         let key = match cfg!(feature = "cloud") {
             true => "accountId",
@@ -291,14 +339,24 @@ impl JiraAPIClient {
             .get(user_url)
             .query(&[(key, user)])
             .send()
-            .wrap_err("GET User request failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
-        Ok(response.json::<User>()?)
+        response
+            .json::<User>()
+            .await
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
     }
 
     #[cfg(feature = "cloud")]
-    pub fn search_filters(&self, filter: Option<String>) -> Result<GetFilterResponseBody> {
-        let mut search_url = self.url.join("/rest/api/latest/filter/search")?;
+    pub async fn search_filters(
+        &self,
+        filter: Option<String>,
+    ) -> Result<GetFilterResponseBody, JiraClientError> {
+        let mut search_url = self
+            .url
+            .join("/rest/api/latest/filter/search")
+            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
         let query = if let Some(filter) = filter {
             format!(
                 "expand=jql&maxResults={}&filterName={}",
@@ -314,10 +372,12 @@ impl JiraAPIClient {
             .client
             .get(search_url)
             .send()
-            .wrap_err("Fetching issue filters failed")?;
+            .await
+            .map_err(JiraClientError::HttpError)?;
 
         response
             .json::<GetFilterResponseBody>()
-            .wrap_err("Failed parsing filter search response")
+            .await
+            .map_err(JiraClientError::HttpError)
     }
 }
