@@ -1,5 +1,3 @@
-use color_eyre::eyre;
-use color_eyre::eyre::{eyre, Result, WrapErr};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -134,23 +132,19 @@ impl Display for WorklogDuration {
 static WORKLOG_RE: OnceLock<Regex> = OnceLock::new();
 
 impl TryFrom<String> for WorklogDuration {
-    type Error = eyre::Error;
-
-    fn try_from(value: String) -> Result<Self>
-    where
-        eyre::Error: From<std::fmt::Error>,
-    {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let worklog_re = WORKLOG_RE.get_or_init(|| {
             Regex::new(r"([0-9]+(?:\.[0-9]+)?)[WwDdHhMm]?").expect("Unable to compile WORKLOG_RE")
         });
 
         let mut worklog = match worklog_re.captures(&value) {
             Some(c) => match c.get(0) {
-                Some(worklog_match) => worklog_match.as_str().to_lowercase(),
-                None => Err(eyre!("First capture is none: WORKLOG_RE"))?,
+                Some(worklog_match) => Ok(worklog_match.as_str().to_lowercase()),
+                None => Err("First capture is none: WORKLOG_RE"),
             },
-            None => Err(eyre!("Malformed worklog duration: {}", value))?,
-        };
+            None => Err("Malformed worklog duration"),
+        }?;
 
         let multiplier = match worklog.pop() {
             Some('m') => 60,
@@ -166,7 +160,7 @@ impl TryFrom<String> for WorklogDuration {
 
         let seconds = worklog
             .parse::<f64>()
-            .wrap_err("Unexpected worklog duration input")?
+            .map_err(|_| "Unexpected worklog duration input")?
             * f64::from(multiplier);
 
         Ok(WorklogDuration(format!("{:.0}", seconds)))
@@ -229,23 +223,19 @@ impl Display for IssueKey {
 static ISSUE_RE: OnceLock<Regex> = OnceLock::new();
 
 impl TryFrom<String> for IssueKey {
-    type Error = eyre::Error;
-
-    fn try_from(value: String) -> Result<Self>
-    where
-        eyre::Error: From<std::fmt::Error>,
-    {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let issue_re = ISSUE_RE
             .get_or_init(|| Regex::new(r"([A-Z]{2,}-[0-9]+)").expect("Unable to compile ISSUE_RE"));
 
         let upper = value.to_uppercase();
         let issue_key = match issue_re.captures(&upper) {
             Some(c) => match c.get(0) {
-                Some(cap) => cap,
-                None => Err(eyre!("First capture is none: ISSUE_RE"))?,
+                Some(cap) => Ok(cap),
+                None => Err("First capture is none: ISSUE_RE"),
             },
-            None => Err(eyre!("Malformed issue key supplied: {}", value))?,
-        };
+            None => Err("Malformed issue key supplied"),
+        }?;
 
         Ok(IssueKey(issue_key.as_str().to_string()))
     }
@@ -276,13 +266,17 @@ pub struct TransitionExpandedFields {
     pub default_value: Option<String>,
 }
 
-#[cfg(not(feature = "cloud"))]
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransitionFieldAllowedValue {
-    #[serde(alias = "self")]
-    pub self_reference: String,
-    pub value: String,
-    pub id: String,
+#[serde(untagged)]
+pub enum TransitionFieldAllowedValue {
+    Str(String),
+    Object {
+        #[serde(alias = "self")]
+        self_reference: String,
+        #[serde(alias = "name")]
+        value: String,
+        id: String,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -293,7 +287,7 @@ pub struct TransitionExpandedFieldsSchema {
     pub custom: String,
     pub custom_id: u32,
     #[cfg(not(feature = "cloud"))]
-    pub system: String,
+    pub system: Option<String>,
 }
 
 #[derive(Serialize, Debug, Clone)]
