@@ -17,6 +17,8 @@ pub enum JiraClientError {
     ConfigError(String),
     #[error("Unable to parse Url")]
     UrlParseError(String),
+    #[error("Parsing failed with: `{0}`")]
+    TryFromError(&'static str),
     #[error("Unknown client error")]
     Unknown,
 }
