@@ -143,11 +143,13 @@ impl TryFrom<String> for WorklogDuration {
         let mut worklog = match worklog_re.captures(&value) {
             Some(c) => match c.get(0) {
                 Some(worklog_match) => Ok(worklog_match.as_str().to_lowercase()),
-                None => Err(JiraClientError::TryFromError(
+                None => Err(JiraClientError::TryFromError(String::from(
                     "First capture is none: WORKLOG_RE",
-                )),
+                ))),
             },
-            None => Err(JiraClientError::TryFromError("Malformed worklog duration")),
+            None => Err(JiraClientError::TryFromError(String::from(
+                "Malformed worklog duration",
+            ))),
         }?;
 
         let multiplier = match worklog.pop() {
@@ -162,10 +164,9 @@ impl TryFrom<String> for WorklogDuration {
             _ => 60, // Should never reach this due to the Regex Match, but try parsing input anyways.
         };
 
-        let seconds = worklog
-            .parse::<f64>()
-            .map_err(|_| JiraClientError::TryFromError("Unexpected worklog duration input"))?
-            * f64::from(multiplier);
+        let seconds = worklog.parse::<f64>().map_err(|_| {
+            JiraClientError::TryFromError(String::from("Unexpected worklog duration input"))
+        })? * f64::from(multiplier);
 
         Ok(WorklogDuration(format!("{:.0}", seconds)))
     }
@@ -236,13 +237,13 @@ impl TryFrom<String> for IssueKey {
         let issue_key = match issue_re.captures(&upper) {
             Some(c) => match c.get(0) {
                 Some(cap) => Ok(cap),
-                None => Err(JiraClientError::TryFromError(
+                None => Err(JiraClientError::TryFromError(String::from(
                     "First capture is none: ISSUE_RE",
-                )),
+                ))),
             },
-            None => Err(JiraClientError::TryFromError(
+            None => Err(JiraClientError::TryFromError(String::from(
                 "Malformed issue key supplied",
-            )),
+            ))),
         }?;
 
         Ok(IssueKey(issue_key.as_str().to_string()))
