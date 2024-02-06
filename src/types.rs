@@ -92,6 +92,8 @@ mod versioned {
 
 pub use versioned::*;
 
+use crate::JiraClientError;
+
 /// Define query parameters
 #[derive(Debug, Clone)]
 pub struct GetAssignableUserParams {
@@ -132,7 +134,7 @@ impl Display for WorklogDuration {
 static WORKLOG_RE: OnceLock<Regex> = OnceLock::new();
 
 impl TryFrom<String> for WorklogDuration {
-    type Error = &'static str;
+    type Error = JiraClientError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let worklog_re = WORKLOG_RE.get_or_init(|| {
             Regex::new(r"([0-9]+(?:\.[0-9]+)?)[WwDdHhMm]?").expect("Unable to compile WORKLOG_RE")
@@ -141,9 +143,11 @@ impl TryFrom<String> for WorklogDuration {
         let mut worklog = match worklog_re.captures(&value) {
             Some(c) => match c.get(0) {
                 Some(worklog_match) => Ok(worklog_match.as_str().to_lowercase()),
-                None => Err("First capture is none: WORKLOG_RE"),
+                None => Err(JiraClientError::TryFromError(
+                    "First capture is none: WORKLOG_RE",
+                )),
             },
-            None => Err("Malformed worklog duration"),
+            None => Err(JiraClientError::TryFromError("Malformed worklog duration")),
         }?;
 
         let multiplier = match worklog.pop() {
@@ -160,7 +164,7 @@ impl TryFrom<String> for WorklogDuration {
 
         let seconds = worklog
             .parse::<f64>()
-            .map_err(|_| "Unexpected worklog duration input")?
+            .map_err(|_| JiraClientError::TryFromError("Unexpected worklog duration input"))?
             * f64::from(multiplier);
 
         Ok(WorklogDuration(format!("{:.0}", seconds)))
@@ -223,7 +227,7 @@ impl Display for IssueKey {
 static ISSUE_RE: OnceLock<Regex> = OnceLock::new();
 
 impl TryFrom<String> for IssueKey {
-    type Error = &'static str;
+    type Error = JiraClientError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let issue_re = ISSUE_RE
             .get_or_init(|| Regex::new(r"([A-Z]{2,}-[0-9]+)").expect("Unable to compile ISSUE_RE"));
@@ -232,9 +236,13 @@ impl TryFrom<String> for IssueKey {
         let issue_key = match issue_re.captures(&upper) {
             Some(c) => match c.get(0) {
                 Some(cap) => Ok(cap),
-                None => Err("First capture is none: ISSUE_RE"),
+                None => Err(JiraClientError::TryFromError(
+                    "First capture is none: ISSUE_RE",
+                )),
             },
-            None => Err("Malformed issue key supplied"),
+            None => Err(JiraClientError::TryFromError(
+                "Malformed issue key supplied",
+            )),
         }?;
 
         Ok(IssueKey(issue_key.as_str().to_string()))
