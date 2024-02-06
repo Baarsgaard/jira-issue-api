@@ -12,11 +12,11 @@ pub enum JiraClientError {
     #[error("Body malformed or invalid")]
     JiraRequestBodyError(String),
     #[error("Unable to parse response")]
-    JiraResponseDeserializeError(#[from] Box<dyn std::error::Error>),
+    JiraResponseDeserializeError(String),
     #[error("Unable to build JiraAPIClient struct")]
-    ConfigError(Box<dyn std::error::Error>),
+    ConfigError(String),
     #[error("Unable to parse Url")]
-    UrlParseError(Box<dyn std::error::Error>),
+    UrlParseError(String),
     #[error("Unknown client error")]
     Unknown,
 }
@@ -118,11 +118,11 @@ impl JiraAPIClient {
             .https_only(true)
             .timeout(Duration::from_secs(cfg.timeout))
             .build()
-            .map_err(|e| JiraClientError::ConfigError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::ConfigError(e.to_string()))?;
 
         Ok(JiraAPIClient {
             url: Url::parse(cfg.url.as_str())
-                .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?,
+                .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?,
             version: String::from("latest"),
             client,
             max_results: cfg.max_query_results,
@@ -136,7 +136,7 @@ impl JiraAPIClient {
         let search_url = self
             .url
             .join("/rest/api/latest/search")
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
         let body = PostIssueQueryBody {
             jql: query.to_owned(),
             start_at: 0,
@@ -155,7 +155,7 @@ impl JiraAPIClient {
         response
             .json::<PostIssueQueryResponseBody>()
             .await
-            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
 
     pub async fn post_worklog(
@@ -168,7 +168,7 @@ impl JiraAPIClient {
             .join(format!("/rest/api/latest/issue/{}/worklog", issue_key).as_str())
         {
             Ok(url) => url,
-            Err(e) => Err(JiraClientError::UrlParseError(Box::new(e)))?,
+            Err(e) => Err(JiraClientError::UrlParseError(e.to_string()))?,
         };
 
         // If any pattern matches, do not prompt.
@@ -197,7 +197,7 @@ impl JiraAPIClient {
         let comment_url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/comment", issue_key).as_str())
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         self.client
             .post(comment_url)
@@ -215,7 +215,7 @@ impl JiraAPIClient {
         let mut transitions_url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         if expand {
             transitions_url.set_query(Some("expand=transitions.fields"))
@@ -231,7 +231,7 @@ impl JiraAPIClient {
         response
             .json::<GetTransitionsBody>()
             .await
-            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
 
     pub async fn post_transition(
@@ -242,7 +242,7 @@ impl JiraAPIClient {
         let transition_url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         let response = self
             .client
@@ -262,7 +262,7 @@ impl JiraAPIClient {
         let mut users_url = self
             .url
             .join("/rest/api/latest/user/assignable/search")
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
         let mut query: String = format!("maxResults={}", params.max_results.unwrap_or(1000));
 
         if params.project.is_none() && params.issue_key.is_none() {
@@ -296,7 +296,7 @@ impl JiraAPIClient {
         response
             .json::<Vec<User>>()
             .await
-            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
 
     pub async fn post_assign_user(
@@ -307,7 +307,7 @@ impl JiraAPIClient {
         let assign_url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/assignee", issue_key).as_str())
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         let body = PostAssignBody::from(user.clone());
 
@@ -327,7 +327,7 @@ impl JiraAPIClient {
         let user_url = self
             .url
             .join("/rest/api/latest/user")
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         let key = match cfg!(feature = "cloud") {
             true => "accountId",
@@ -345,7 +345,7 @@ impl JiraAPIClient {
         response
             .json::<User>()
             .await
-            .map_err(|e| JiraClientError::JiraResponseDeserializeError(Box::new(e)))
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
 
     #[cfg(feature = "cloud")]
@@ -356,7 +356,7 @@ impl JiraAPIClient {
         let mut search_url = self
             .url
             .join("/rest/api/latest/filter/search")
-            .map_err(|e| JiraClientError::UrlParseError(Box::new(e)))?;
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
         let query = if let Some(filter) = filter {
             format!(
                 "expand=jql&maxResults={}&filterName={}",
