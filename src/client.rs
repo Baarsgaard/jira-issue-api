@@ -9,18 +9,18 @@ use thiserror::Error;
 pub enum JiraClientError {
     #[error("Request failed")]
     HttpError(#[from] reqwest::Error),
-    #[error("Body malformed or invalid")]
+    #[error("Body malformed or invalid: {0}")]
     JiraRequestBodyError(String),
-    #[error("Unable to parse response")]
+    #[error("Unable to parse response: {0}")]
     JiraResponseDeserializeError(String),
-    #[error("Unable to build JiraAPIClient struct")]
+    #[error("Unable to build JiraAPIClient struct:{0}")]
     ConfigError(String),
-    #[error("Unable to parse Url")]
+    #[error("Unable to parse Url: {0}")]
     UrlParseError(String),
-    #[error("Parsing failed with: `{0}`")]
-    TryFromError(&'static str),
-    #[error("Unknown client error")]
-    Unknown,
+    #[error("{0}")]
+    TryFromError(String),
+    #[error("{0}")]
+    UnknownError(String),
 }
 
 /// JiraApiClient config object
