@@ -143,13 +143,11 @@ impl TryFrom<String> for WorklogDuration {
         let mut worklog = match worklog_re.captures(&value) {
             Some(c) => match c.get(0) {
                 Some(worklog_match) => Ok(worklog_match.as_str().to_lowercase()),
-                None => Err(JiraClientError::TryFromError(String::from(
+                None => Err(JiraClientError::TryFromError(
                     "First capture is none: WORKLOG_RE",
-                ))),
+                )),
             },
-            None => Err(JiraClientError::TryFromError(String::from(
-                "Malformed worklog duration",
-            ))),
+            None => Err(JiraClientError::TryFromError("Malformed worklog duration")),
         }?;
 
         let multiplier = match worklog.pop() {
@@ -164,9 +162,10 @@ impl TryFrom<String> for WorklogDuration {
             _ => 60, // Should never reach this due to the Regex Match, but try parsing input anyways.
         };
 
-        let seconds = worklog.parse::<f64>().map_err(|_| {
-            JiraClientError::TryFromError(String::from("Unexpected worklog duration input"))
-        })? * f64::from(multiplier);
+        let seconds = worklog
+            .parse::<f64>()
+            .map_err(|_| JiraClientError::TryFromError("Unexpected worklog duration input"))?
+            * f64::from(multiplier);
 
         Ok(WorklogDuration(format!("{:.0}", seconds)))
     }
@@ -237,13 +236,13 @@ impl TryFrom<String> for IssueKey {
         let issue_key = match issue_re.captures(&upper) {
             Some(c) => match c.get(0) {
                 Some(cap) => Ok(cap),
-                None => Err(JiraClientError::TryFromError(String::from(
+                None => Err(JiraClientError::TryFromError(
                     "First capture is none: ISSUE_RE",
-                ))),
+                )),
             },
-            None => Err(JiraClientError::TryFromError(String::from(
+            None => Err(JiraClientError::TryFromError(
                 "Malformed issue key supplied",
-            ))),
+            )),
         }?;
 
         Ok(IssueKey(issue_key.as_str().to_string()))
@@ -337,7 +336,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn worklog_tryfrom_all_units_returns_duration_in_seconds() {
+    fn worklog_tryfrom_all_units_returns_duration_in_seconds() -> Result<(), JiraClientError> {
         let worklogs = vec![
             (60, "1"),
             (60, "1m"),
@@ -351,35 +350,40 @@ mod tests {
         ];
 
         for (expected_seconds, input) in worklogs {
-            let seconds = WorklogDuration::try_from(input.to_string()).unwrap().0;
+            let seconds = WorklogDuration::try_from(input.to_string())?.0;
             assert_eq!(expected_seconds.to_string(), seconds);
         }
+        Ok(())
     }
 
     #[test]
-    fn worklog_tryfrom_lowercase_unit() {
-        let wl = WorklogDuration::try_from(String::from("1h")).unwrap().0;
-        assert_eq!(String::from("3600"), wl);
+    fn worklog_tryfrom_lowercase_unit() -> Result<(), JiraClientError> {
+        let wl = WorklogDuration::try_from(String::from("1h"))?;
+        assert_eq!(String::from("3600"), wl.to_string());
+        Ok(())
     }
     #[test]
-    fn worklog_tryfrom_uppercase_unit() {
-        let wl = WorklogDuration::try_from(String::from("2H")).unwrap().0;
-        assert_eq!(String::from("7200"), wl);
+    fn worklog_tryfrom_uppercase_unit() -> Result<(), JiraClientError> {
+        let wl = WorklogDuration::try_from(String::from("2H"))?;
+        assert_eq!(String::from("7200"), wl.to_string());
+        Ok(())
     }
 
     #[test]
-    fn worklog_tostring() {
-        let wl = WorklogDuration::try_from(String::from("1h")).unwrap();
+    fn worklog_tostring() -> Result<(), JiraClientError> {
+        let wl = WorklogDuration::try_from(String::from("1h"))?;
         let expected = String::from("3600");
         assert_eq!(expected, wl.to_string());
+        Ok(())
     }
 
     #[test]
-    fn issuekey_tryfrom_uppercase_id() {
+    fn issuekey_tryfrom_uppercase_id() -> Result<(), JiraClientError> {
         let key = String::from("JB-1");
         let issue = IssueKey::try_from(key.clone());
         assert!(issue.is_ok());
-        assert_eq!(key, issue.unwrap().0);
+        assert_eq!(key, issue?.0);
+        Ok(())
     }
 
     #[test]
