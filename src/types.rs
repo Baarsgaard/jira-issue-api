@@ -135,7 +135,7 @@ static WORKLOG_RE: OnceLock<Regex> = OnceLock::new();
 
 impl TryFrom<String> for WorklogDuration {
     type Error = JiraClientError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, JiraClientError> {
         let worklog_re = WORKLOG_RE.get_or_init(|| {
             Regex::new(r"([0-9]+(?:\.[0-9]+)?)[WwDdHhMm]?").expect("Unable to compile WORKLOG_RE")
         });
@@ -144,10 +144,12 @@ impl TryFrom<String> for WorklogDuration {
             Some(c) => match c.get(0) {
                 Some(worklog_match) => Ok(worklog_match.as_str().to_lowercase()),
                 None => Err(JiraClientError::TryFromError(
-                    "First capture is none: WORKLOG_RE",
+                    "First capture is none: WORKLOG_RE".to_string(),
                 )),
             },
-            None => Err(JiraClientError::TryFromError("Malformed worklog duration")),
+            None => Err(JiraClientError::TryFromError(
+                "Malformed worklog duration".to_string(),
+            )),
         }?;
 
         let multiplier = match worklog.pop() {
@@ -162,10 +164,9 @@ impl TryFrom<String> for WorklogDuration {
             _ => 60, // Should never reach this due to the Regex Match, but try parsing input anyways.
         };
 
-        let seconds = worklog
-            .parse::<f64>()
-            .map_err(|_| JiraClientError::TryFromError("Unexpected worklog duration input"))?
-            * f64::from(multiplier);
+        let seconds = worklog.parse::<f64>().map_err(|_| {
+            JiraClientError::TryFromError("Unexpected worklog duration input".to_string())
+        })? * f64::from(multiplier);
 
         Ok(WorklogDuration(format!("{:.0}", seconds)))
     }
@@ -237,11 +238,11 @@ impl TryFrom<String> for IssueKey {
             Some(c) => match c.get(0) {
                 Some(cap) => Ok(cap),
                 None => Err(JiraClientError::TryFromError(
-                    "First capture is none: ISSUE_RE",
+                    "First capture is none: ISSUE_RE".to_string(),
                 )),
             },
             None => Err(JiraClientError::TryFromError(
-                "Malformed issue key supplied",
+                "Malformed issue key supplied".to_string(),
             )),
         }?;
 
