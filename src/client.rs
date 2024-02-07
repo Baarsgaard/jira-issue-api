@@ -91,8 +91,8 @@ impl JiraAPIClient {
     /// Instantiate a reusable API client.
     ///
     /// ```rust
-    /// use jira::types::*;
-    /// use jira::{Credential, JiraClientConfig, JiraAPIClient};
+    /// use jira_issue_api::types::*;
+    /// use jira_issue_api::{Credential, JiraClientConfig, JiraAPIClient};
     ///
     /// let anon = Credential::Anonymous;
     ///
