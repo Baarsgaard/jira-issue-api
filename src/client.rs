@@ -10,7 +10,7 @@ pub enum JiraClientError {
     #[error("Request failed")]
     HttpError(#[from] reqwest::Error),
     #[error("Body malformed or invalid: {0}")]
-    JiraRequestBodyError(String),
+    JiraRequestBodyError(&'static str),
     #[error("Unable to parse response: {0}")]
     JiraResponseDeserializeError(String),
     #[error("Unable to build JiraAPIClient struct:{0}")]
@@ -18,7 +18,7 @@ pub enum JiraClientError {
     #[error("Unable to parse Url: {0}")]
     UrlParseError(String),
     #[error("{0}")]
-    TryFromError(String),
+    TryFromError(&'static str),
     #[error("{0}")]
     UnknownError(String),
 }
@@ -178,9 +178,9 @@ impl JiraAPIClient {
             (body.time_spent.is_some(), body.time_spent_seconds.is_some()),
             (false, false) | (true, true)
         ) {
-            return Err(JiraClientError::JiraRequestBodyError(String::from(
+            return Err(JiraClientError::JiraRequestBodyError(
                 "time_spent and time_spent_seconds are both 'Some()' or 'None'",
-            )));
+            ));
         }
 
         self.client
@@ -268,9 +268,9 @@ impl JiraAPIClient {
         let mut query: String = format!("maxResults={}", params.max_results.unwrap_or(1000));
 
         if params.project.is_none() && params.issue_key.is_none() {
-            Err(JiraClientError::JiraRequestBodyError(String::from(
+            Err(JiraClientError::JiraRequestBodyError(
                 "Both project and issue_key are None, define either to query for assignable users.",
-            )))?
+            ))?
         }
 
         if let Some(issue_key) = params.issue_key.clone() {
