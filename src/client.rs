@@ -9,6 +9,8 @@ use thiserror::Error;
 pub enum JiraClientError {
     #[error("Request failed")]
     HttpError(#[from] reqwest::Error),
+    #[error("Authentication failed")]
+    JiraQueryAuthenticationError(),
     #[error("Body malformed or invalid: {0}")]
     JiraRequestBodyError(String),
     #[error("Unable to parse response: {0}")]
@@ -34,7 +36,7 @@ pub struct JiraClientConfig {
 }
 
 /// Supported Authentication methods
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Credential {
     /// Anonymous
     /// Omit Authorization header
@@ -54,6 +56,7 @@ pub struct JiraAPIClient {
     pub version: String,
 
     pub(crate) client: Client,
+    pub(crate) anonymous_access: bool,
     pub(crate) max_results: u32,
 }
 
@@ -128,6 +131,7 @@ impl JiraAPIClient {
             version: String::from("latest"),
             client,
             max_results: cfg.max_query_results,
+            anonymous_access: cfg.credential.eq(&Credential::Anonymous),
         })
     }
 
@@ -139,6 +143,7 @@ impl JiraAPIClient {
             .url
             .join("/rest/api/latest/search")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
+
         let body = PostIssueQueryBody {
             jql: query.to_owned(),
             start_at: 0,
@@ -146,7 +151,7 @@ impl JiraAPIClient {
             fields: vec![String::from("summary")],
         };
 
-        let response = self
+        let res = self
             .client
             .post(search_url)
             .json(&body)
@@ -154,8 +159,20 @@ impl JiraAPIClient {
             .await
             .map_err(JiraClientError::HttpError)?;
 
-        response
-            .json::<PostIssueQueryResponseBody>()
+        if !self.anonymous_access
+            && (res
+                .headers()
+                .get("x-seraph-loginreason")
+                .is_some_and(|e| e.to_str().unwrap_or_default() == "AUTHENTICATED_FAILED")
+                || res
+                    .headers()
+                    .get("x-ausername")
+                    .is_some_and(|e| e.to_str().unwrap_or_default() == "anonymous"))
+        {
+            return Err(JiraClientError::JiraQueryAuthenticationError());
+        }
+
+        res.json::<PostIssueQueryResponseBody>()
             .await
             .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
