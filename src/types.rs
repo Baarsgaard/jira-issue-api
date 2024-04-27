@@ -68,7 +68,7 @@ mod versioned {
         }
     }
 
-    #[derive(Deserialize, Debug, Clone)]
+    #[derive(Deserialize, Serialize, Debug, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct User {
         pub active: bool,
