@@ -1,5 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
 use std::{
     collections::HashMap,
     fmt::{Display, Error, Formatter},
@@ -10,7 +12,7 @@ use std::{
 mod versioned {
     use super::*;
 
-    #[derive(Deserialize, Debug, Clone)]
+    #[derive(Deserialize, Serialize, Debug, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct User {
         pub active: bool,
@@ -176,7 +178,7 @@ impl TryFrom<String> for WorklogDuration {
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PostIssueQueryBody {
-    pub fields: Vec<String>,
+    pub fields: Option<Vec<String>>,
     pub jql: String,
     pub max_results: u32,
     pub start_at: u32,
@@ -197,17 +199,59 @@ pub struct PostIssueQueryResponseBody {
 #[serde(rename_all = "camelCase")]
 pub struct Issue {
     pub expand: String,
-    pub fields: PostIssueQueryResponseBodyFields,
+    pub fields: IssueFields,
     pub id: String,
     pub key: IssueKey,
     #[serde(alias = "self")]
     pub self_reference: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PostIssueQueryResponseBodyFields {
+pub struct IssueFields {
+    pub assignee: Option<User>,
+    pub components: Vec<Component>,
+    pub created: String,
+    pub creator: User,
+    pub description: Option<String>,
+    pub duedate: Option<String>,
+    pub labels: Vec<String>,
+    pub last_viewed: Option<String>,
+    pub reporter: User,
+    pub resolutiondate: Option<String>,
     pub summary: String,
+    pub timeestimate: Option<u32>,
+    pub timeoriginalestimate: Option<u32>,
+    pub timespent: Option<u32>,
+    pub updated: String,
+    pub workratio: i32,
+
+    // pub project: Project,            //TODO
+    // pub issuetype: IssueType,        //TODO
+    // pub status: Status,              //TODO
+    // pub comment: CommentContainer,   //TODO
+    // pub resolution: Resolution,      //TODO
+    // pub priority: Priority,          //TODO
+    // pub progress: Progress,          //TODO
+    // pub subtasks: Vec<Value>,        //TODO
+    // pub issue_links: Vec<Value>,     //TODO
+    // pub votes: Votes,                //TODO
+    // pub worklog: Worklog,            //TODO
+    // pub timetracking: TimeTracking,  //TODO
+    // pub watches: Watches,            //TODO
+    // pub fix_versions: Vec<Version>,  //TODO
+    // pub versions: Vec<Version>,      //TODO
+    // pub attachment: Vec<Attachment>, //TODO
+    #[serde(flatten)]
+    pub customfields: BTreeMap<String, Value>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Component {
+    pub id: String,
+    pub name: String,
+    #[serde(alias = "self")]
+    pub self_ref: String,
 }
 
 impl Display for Issue {

@@ -138,6 +138,7 @@ impl JiraAPIClient {
     pub async fn query_issues(
         &self,
         query: &String,
+        fields: Option<Vec<String>>,
     ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
         let search_url = self
             .url
@@ -148,7 +149,7 @@ impl JiraAPIClient {
             jql: query.to_owned(),
             start_at: 0,
             max_results: self.max_results,
-            fields: vec![String::from("summary")],
+            fields,
         };
 
         let res = self
@@ -224,6 +225,33 @@ impl JiraAPIClient {
             .send()
             .await
             .map_err(JiraClientError::HttpError)
+    }
+
+    pub async fn get_issue(
+        &self,
+        issue_key: &IssueKey,
+        expand: bool,
+    ) -> Result<Issue, JiraClientError> {
+        let mut issue_url = self
+            .url
+            .join(format!("/rest/api/latest/issue/{}", issue_key).as_str())
+            .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
+
+        if expand {
+            issue_url.set_query(Some("expand=names,renderedFields"))
+        }
+
+        let response = self
+            .client
+            .get(issue_url)
+            .send()
+            .await
+            .map_err(JiraClientError::HttpError)?;
+
+        response
+            .json::<Issue>()
+            .await
+            .map_err(|e| JiraClientError::JiraResponseDeserializeError(e.to_string()))
     }
 
     pub async fn get_transitions(
