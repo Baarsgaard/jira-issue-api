@@ -210,21 +210,21 @@ pub struct Issue {
 #[serde(rename_all = "camelCase")]
 pub struct IssueFields {
     pub assignee: Option<User>,
-    pub components: Vec<Component>,
-    pub created: String,
-    pub creator: User,
+    pub components: Option<Vec<Component>>,
+    pub created: Option<String>,
+    pub creator: Option<User>,
     pub description: Option<String>,
     pub duedate: Option<String>,
-    pub labels: Vec<String>,
+    pub labels: Option<Vec<String>>,
     pub last_viewed: Option<String>,
-    pub reporter: User,
+    pub reporter: Option<User>,
     pub resolutiondate: Option<String>,
-    pub summary: String,
+    pub summary: Option<String>,
     pub timeestimate: Option<u32>,
     pub timeoriginalestimate: Option<u32>,
     pub timespent: Option<u32>,
-    pub updated: String,
-    pub workratio: i32,
+    pub updated: Option<String>,
+    pub workratio: Option<i32>,
 
     // pub project: Project,            //TODO
     // pub issuetype: IssueType,        //TODO
@@ -256,7 +256,15 @@ pub struct Component {
 
 impl Display for Issue {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{} {}", self.key, self.fields.summary)
+        write!(
+            f,
+            "{} {}",
+            self.key,
+            self.fields
+                .summary
+                .clone()
+                .unwrap_or("summary is None or missing from query response".to_string())
+        )
     }
 }
 
