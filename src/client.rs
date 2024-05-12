@@ -139,11 +139,13 @@ impl JiraAPIClient {
         &self,
         query: &String,
         fields: Option<Vec<String>>,
+        expand_options: Option<&str>,
     ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
-        let search_url = self
+        let mut url = self
             .url
             .join("/rest/api/latest/search")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
+        url.set_query(expand_options);
 
         let body = PostIssueQueryBody {
             jql: query.to_owned(),
@@ -154,7 +156,7 @@ impl JiraAPIClient {
 
         let res = self
             .client
-            .post(search_url)
+            .post(url)
             .json(&body)
             .send()
             .await
@@ -183,7 +185,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         body: PostWorklogBody,
     ) -> Result<Response, JiraClientError> {
-        let worklog_url = match self
+        let url = match self
             .url
             .join(format!("/rest/api/latest/issue/{}/worklog", issue_key).as_str())
         {
@@ -202,7 +204,7 @@ impl JiraAPIClient {
         }
 
         self.client
-            .post(worklog_url)
+            .post(url)
             .json(&body)
             .send()
             .await
@@ -214,13 +216,13 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         body: PostCommentBody,
     ) -> Result<Response, JiraClientError> {
-        let comment_url = self
+        let url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/comment", issue_key).as_str())
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         self.client
-            .post(comment_url)
+            .post(url)
             .json(&body)
             .send()
             .await
@@ -230,20 +232,22 @@ impl JiraAPIClient {
     pub async fn get_issue(
         &self,
         issue_key: &IssueKey,
-        expand: bool,
+        expand_options: Option<&str>,
     ) -> Result<Issue, JiraClientError> {
-        let mut issue_url = self
+        let mut url = self
             .url
             .join(format!("/rest/api/latest/issue/{}", issue_key).as_str())
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
-        if expand {
-            issue_url.set_query(Some("expand=names,renderedFields"))
+        if expand_options.is_some() && !expand_options.unwrap().starts_with("expand=") {
+            url.set_query(Some(format!("expand={}", expand_options.unwrap()).as_str()));
+        } else {
+            url.set_query(expand_options)
         }
 
         let response = self
             .client
-            .get(issue_url)
+            .get(url)
             .send()
             .await
             .map_err(JiraClientError::HttpError)?;
@@ -257,20 +261,24 @@ impl JiraAPIClient {
     pub async fn get_transitions(
         &self,
         issue_key: &IssueKey,
-        expand: bool,
+        expand_options: Option<&str>,
     ) -> Result<GetTransitionsBody, JiraClientError> {
-        let mut transitions_url = self
+        let mut url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
-        if expand {
-            transitions_url.set_query(Some("expand=transitions.fields"))
+        if expand_options.is_none() {
+            url.set_query(Some("expand=transitions.fields"));
+        } else if expand_options.is_some() && expand_options.unwrap().starts_with("expand=") {
+            url.set_query(expand_options);
+        } else {
+            url.set_query(Some(format!("expand={}", expand_options.unwrap()).as_str()));
         }
 
         let response = self
             .client
-            .get(transitions_url)
+            .get(url)
             .send()
             .await
             .map_err(JiraClientError::HttpError)?;
@@ -286,14 +294,14 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         transition: &PostTransitionBody,
     ) -> Result<Response, JiraClientError> {
-        let transition_url = self
+        let url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/transitions", issue_key).as_str())
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
 
         let response = self
             .client
-            .post(transition_url)
+            .post(url)
             .json(transition)
             .send()
             .await
@@ -306,7 +314,7 @@ impl JiraAPIClient {
         &self,
         params: &GetAssignableUserParams,
     ) -> Result<Vec<User>, JiraClientError> {
-        let mut users_url = self
+        let mut url = self
             .url
             .join("/rest/api/latest/user/assignable/search")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
@@ -332,11 +340,11 @@ impl JiraAPIClient {
             query.push_str(format!("&project={}", project).as_str());
         }
 
-        users_url.set_query(Some(query.as_str()));
+        url.set_query(Some(query.as_str()));
 
         let response = self
             .client
-            .get(users_url)
+            .get(url)
             .send()
             .await
             .map_err(JiraClientError::HttpError)?;
@@ -352,7 +360,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         user: &User,
     ) -> Result<Response, JiraClientError> {
-        let assign_url = self
+        let url = self
             .url
             .join(format!("/rest/api/latest/issue/{}/assignee", issue_key).as_str())
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
@@ -361,7 +369,7 @@ impl JiraAPIClient {
 
         let response = self
             .client
-            .put(assign_url)
+            .put(url)
             .json(&body)
             .send()
             .await
@@ -372,7 +380,7 @@ impl JiraAPIClient {
     /// cloud:  user.account_id
     /// server: user.name
     pub async fn get_user(&self, user: String) -> Result<User, JiraClientError> {
-        let user_url = self
+        let url = self
             .url
             .join("/rest/api/latest/user")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
@@ -384,7 +392,7 @@ impl JiraAPIClient {
 
         let response = self
             .client
-            .get(user_url)
+            .get(url)
             .query(&[(key, user)])
             .send()
             .await
@@ -401,7 +409,7 @@ impl JiraAPIClient {
         &self,
         filter: Option<String>,
     ) -> Result<GetFilterResponseBody, JiraClientError> {
-        let mut search_url = self
+        let mut url = self
             .url
             .join("/rest/api/latest/filter/search")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
@@ -414,11 +422,11 @@ impl JiraAPIClient {
             format!("expand=jql&maxResults={}", self.max_results)
         };
 
-        search_url.set_query(Some(query.as_str()));
+        url.set_query(Some(query.as_str()));
 
         let response = self
             .client
-            .get(search_url)
+            .get(url)
             .send()
             .await
             .map_err(JiraClientError::HttpError)?;
