@@ -182,6 +182,7 @@ pub struct PostIssueQueryBody {
     pub jql: String,
     pub max_results: u32,
     pub start_at: u32,
+    pub expand: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -193,6 +194,8 @@ pub struct PostIssueQueryResponseBody {
     pub max_results: Option<u32>,
     pub start_at: Option<u32>,
     pub total: Option<u32>,
+    /// Some when expanding names on query_issues
+    pub names: Option<HashMap<String, String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -204,8 +207,11 @@ pub struct Issue {
     pub key: IssueKey,
     #[serde(alias = "self")]
     pub self_reference: String,
+    /// Some when expanding names on get_issue
+    pub names: Option<HashMap<String, String>>,
 }
 
+/// All fields are optional as it's possible to define what fields you want in the request
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueFields {

@@ -122,6 +122,7 @@ impl JiraAPIClient {
             .danger_accept_invalid_certs(cfg.tls_accept_invalid_certs)
             .https_only(true)
             .timeout(Duration::from_secs(cfg.timeout))
+            .connection_verbose(true)
             .build()
             .map_err(|e| JiraClientError::ConfigError(e.to_string()))?;
 
@@ -139,18 +140,18 @@ impl JiraAPIClient {
         &self,
         query: &String,
         fields: Option<Vec<String>>,
-        expand_options: Option<&str>,
+        expand_options: Option<Vec<String>>,
     ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
-        let mut url = self
+        let url = self
             .url
             .join("/rest/api/latest/search")
             .map_err(|e| JiraClientError::UrlParseError(e.to_string()))?;
-        url.set_query(expand_options);
 
         let body = PostIssueQueryBody {
             jql: query.to_owned(),
             start_at: 0,
             max_results: self.max_results,
+            expand: expand_options,
             fields,
         };
 
