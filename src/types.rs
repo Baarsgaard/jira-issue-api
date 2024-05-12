@@ -206,7 +206,7 @@ pub struct Issue {
     pub self_reference: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueFields {
     pub assignee: Option<User>,
