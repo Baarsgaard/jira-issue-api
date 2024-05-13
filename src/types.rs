@@ -182,6 +182,7 @@ pub struct PostIssueQueryBody {
     pub jql: String,
     pub max_results: u32,
     pub start_at: u32,
+    /// Expects camelCase and is case-sensitive
     pub expand: Option<Vec<String>>,
 }
 

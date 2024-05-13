@@ -122,7 +122,7 @@ impl JiraAPIClient {
             .danger_accept_invalid_certs(cfg.tls_accept_invalid_certs)
             .https_only(true)
             .timeout(Duration::from_secs(cfg.timeout))
-            .connection_verbose(true)
+            .connection_verbose(false)
             .build()
             .map_err(|e| JiraClientError::ConfigError(e.to_string()))?;
 
