@@ -320,6 +320,14 @@ impl JiraAPIClient {
         Ok(body)
     }
 
+    pub async fn get_fields(&self) -> Result<Vec<Field>, JiraClientError> {
+        let url = self.api_url("/field")?;
+
+        let response = self.client.get(url).send().await?;
+        let body = response.json::<Vec<Field>>().await?;
+        Ok(body)
+    }
+
     #[cfg(feature = "cloud")]
     pub async fn search_filters(
         &self,

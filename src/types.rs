@@ -254,6 +254,59 @@ pub struct IssueFields {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Field {
+    id: String,
+    name: String,
+    custom: bool,
+    orderable: bool,
+    navigable: bool,
+    searchable: bool,
+    clause_names: Vec<String>,
+    schema: Option<FieldSchema>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldSchema {
+    custom: Option<FieldSchemaType>,
+    custom_id: Option<String>,
+    items: Option<FieldSchemaType>,
+    system: Option<FieldSchemaType>,
+    #[serde(alias = "type")]
+    field_type: Option<u32>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum FieldSchemaType {
+    Any,
+    Array,
+    Attachment,
+    CommentsPage,
+    Component,
+    Date,
+    Datetime,
+    Issuelinks,
+    Issuetype,
+    Number,
+    Option,
+    Priority,
+    Progress,
+    Project,
+    Resolution,
+    Securitylevel,
+    Status,
+    String,
+    Timetracking,
+    User,
+    Version,
+    Votes,
+    Watches,
+    Worklog,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Component {
     pub id: String,
     pub name: String,
