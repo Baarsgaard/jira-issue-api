@@ -305,8 +305,8 @@ impl JiraAPIClient {
         Ok(response)
     }
 
-    /// cloud:  user.account_id
-    /// server: user.name
+    /// cloud:       user.account_id
+    /// data-center: user.name
     pub async fn get_user(&self, user: String) -> Result<User, JiraClientError> {
         let url = self.api_url("/user")?;
 
@@ -328,11 +328,19 @@ impl JiraAPIClient {
         Ok(body)
     }
 
+    pub async fn get_filter(&self, id: &str) -> Result<Filter, JiraClientError> {
+        let url = self.api_url(&format!("/filter/{}", id))?;
+
+        let response = self.client.get(url).send().await?;
+        let body = response.json::<Filter>().await?;
+        Ok(body)
+    }
+
     #[cfg(feature = "cloud")]
     pub async fn search_filters(
         &self,
         filter: Option<String>,
-    ) -> Result<GetFilterResponseBody, JiraClientError> {
+    ) -> Result<GetFilterSearchResponseBody, JiraClientError> {
         let mut url = self.api_url("/filter/search")?;
         let query = if let Some(filter) = filter {
             format!(
@@ -346,7 +354,7 @@ impl JiraAPIClient {
         url.set_query(Some(&query));
 
         let response = self.client.get(url).send().await?;
-        let body = response.json::<GetFilterResponseBody>().await?;
+        let body = response.json::<GetFilterSearchResponseBody>().await?;
         Ok(body)
     }
 }

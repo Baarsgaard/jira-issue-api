@@ -39,7 +39,7 @@ mod versioned {
 
     #[derive(Deserialize, Debug, Clone)]
     #[serde(rename_all = "camelCase")]
-    pub struct GetFilterResponseBody {
+    pub struct GetFilterSearchResponseBody {
         // https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-filters/#api-rest-api-2-filter-search-get
         pub max_results: u32,
         pub start_at: u32,
@@ -47,25 +47,6 @@ mod versioned {
         pub is_last: bool,
         #[serde(alias = "values")]
         pub filters: Vec<Filter>,
-    }
-
-    #[derive(Deserialize, Debug, Clone)]
-    pub struct Filter {
-        pub id: String,
-        pub jql: String,
-        pub name: String,
-    }
-
-    impl Filter {
-        pub fn filter_query(filter: &Filter) -> String {
-            format!("filter={}", filter.id)
-        }
-    }
-
-    impl Display for Filter {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-            write!(f, "{}: {}", self.name, self.jql)
-        }
     }
 
     #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -304,6 +285,40 @@ pub enum FieldSchemaType {
     Votes,
     Watches,
     Worklog,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Filter {
+    #[serde(alias = "self")]
+    pub self_reference: String,
+    id: String,
+    name: String,
+    description: String,
+    owner: User,
+    jql: String,
+    view_url: String,
+    search_url: String,
+    favourite: bool,
+    shared_users: FilterSharedUsers,
+    // subscriptions: FilterSubscriptions
+    // share_permissions: FilterSharePermissions
+}
+
+impl Display for Filter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "{}: {}", self.name, self.jql)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct FilterSharedUsers {
+    size: u32,
+    max_results: u32,
+    start_index: u32,
+    end_index: u32,
+    items: Vec<User>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
