@@ -237,25 +237,25 @@ pub struct IssueFields {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Field {
-    id: String,
-    name: String,
-    custom: bool,
-    orderable: bool,
-    navigable: bool,
-    searchable: bool,
-    clause_names: Vec<String>,
-    schema: Option<FieldSchema>,
+    pub id: String,
+    pub name: String,
+    pub custom: bool,
+    pub orderable: bool,
+    pub navigable: bool,
+    pub searchable: bool,
+    pub clause_names: Vec<String>,
+    pub schema: Option<FieldSchema>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldSchema {
-    custom: Option<FieldSchemaType>,
-    custom_id: Option<String>,
-    items: Option<FieldSchemaType>,
-    system: Option<FieldSchemaType>,
+    pub custom: Option<FieldSchemaType>,
+    pub custom_id: Option<String>,
+    pub items: Option<FieldSchemaType>,
+    pub system: Option<FieldSchemaType>,
     #[serde(alias = "type")]
-    field_type: Option<u32>,
+    pub field_type: Option<u32>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -292,17 +292,17 @@ pub enum FieldSchemaType {
 pub struct Filter {
     #[serde(alias = "self")]
     pub self_reference: String,
-    id: String,
-    name: String,
-    description: String,
-    owner: User,
-    jql: String,
-    view_url: String,
-    search_url: String,
-    favourite: bool,
-    shared_users: FilterSharedUsers,
-    // subscriptions: FilterSubscriptions
-    // share_permissions: FilterSharePermissions
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub owner: User,
+    pub jql: String,
+    pub view_url: String,
+    pub search_url: String,
+    pub favourite: bool,
+    pub shared_users: FilterSharedUsers,
+    // pub subscriptions: FilterSubscriptions
+    // pub share_permissions: FilterSharePermissions
 }
 
 impl Display for Filter {
@@ -314,11 +314,11 @@ impl Display for Filter {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct FilterSharedUsers {
-    size: u32,
-    max_results: u32,
-    start_index: u32,
-    end_index: u32,
-    items: Vec<User>,
+    pub size: u32,
+    pub max_results: u32,
+    pub start_index: u32,
+    pub end_index: u32,
+    pub items: Vec<User>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
