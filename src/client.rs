@@ -132,7 +132,7 @@ impl JiraAPIClient {
             .connection_verbose(false)
             .build()?;
 
-        let url = Url::parse(cfg.url.as_str())?;
+        let url = Url::parse(&cfg.url)?;
         Ok(JiraAPIClient {
             api_url: url.join("/rest/api/latest/")?,
             url,
@@ -183,7 +183,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         body: PostWorklogBody,
     ) -> Result<Response, JiraClientError> {
-        let url = self.api_url(format!("/issue/{}/worklog", issue_key).as_str())?;
+        let url = self.api_url(&format!("/issue/{}/worklog", issue_key))?;
 
         // If any pattern matches, do not prompt.
         if matches!(
@@ -204,7 +204,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         body: PostCommentBody,
     ) -> Result<Response, JiraClientError> {
-        let url = self.api_url(format!("/issue/{}/comment", issue_key).as_str())?;
+        let url = self.api_url(&format!("/issue/{}/comment", issue_key))?;
 
         let response = self.client.post(url).json(&body).send().await?;
         Ok(response)
@@ -215,10 +215,10 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         expand_options: Option<&str>,
     ) -> Result<Issue, JiraClientError> {
-        let mut url = self.api_url(format!("/issue/{}", issue_key).as_str())?;
+        let mut url = self.api_url(&format!("/issue/{}", issue_key))?;
 
         if expand_options.is_some() && !expand_options.unwrap().starts_with("expand=") {
-            url.set_query(Some(format!("expand={}", expand_options.unwrap()).as_str()));
+            url.set_query(Some(&format!("expand={}", expand_options.unwrap())));
         } else {
             url.set_query(expand_options)
         }
@@ -233,14 +233,14 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         expand_options: Option<&str>,
     ) -> Result<GetTransitionsBody, JiraClientError> {
-        let mut url = self.api_url(format!("/issue/{}/transitions", issue_key).as_str())?;
+        let mut url = self.api_url(&format!("/issue/{}/transitions", issue_key))?;
 
         if expand_options.is_none() {
             url.set_query(Some("expand=transitions.fields"));
         } else if expand_options.is_some() && expand_options.unwrap().starts_with("expand=") {
             url.set_query(expand_options);
         } else {
-            url.set_query(Some(format!("expand={}", expand_options.unwrap()).as_str()));
+            url.set_query(Some(&format!("expand={}", expand_options.unwrap())));
         }
 
         let response = self.client.get(url).send().await?;
@@ -253,7 +253,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         transition: &PostTransitionBody,
     ) -> Result<Response, JiraClientError> {
-        let url = self.api_url(format!("/issue/{}/transitions", issue_key).as_str())?;
+        let url = self.api_url(&format!("/issue/{}/transitions", issue_key))?;
 
         let response = self.client.post(url).json(transition).send().await?;
         Ok(response)
@@ -274,19 +274,19 @@ impl JiraAPIClient {
         }
 
         if let Some(issue_key) = params.issue_key.clone() {
-            query.push_str(format!("&issueKey={}", issue_key).as_str());
+            query.push_str(&format!("&issueKey={}", issue_key));
         }
         if let Some(username) = params.username.clone() {
             #[cfg(feature = "cloud")]
-            query.push_str(format!("&query={}", username).as_str());
+            query.push_str(&format!("&query={}", username));
             #[cfg(not(feature = "cloud"))]
-            query.push_str(format!("&username={}", username).as_str());
+            query.push_str(&format!("&username={}", username));
         }
         if let Some(project) = params.project.clone() {
-            query.push_str(format!("&project={}", project).as_str());
+            query.push_str(&format!("&project={}", project));
         }
 
-        url.set_query(Some(query.as_str()));
+        url.set_query(Some(&query));
 
         let response = self.client.get(url).send().await?;
         let body = response.json::<Vec<User>>().await?;
@@ -298,7 +298,7 @@ impl JiraAPIClient {
         issue_key: &IssueKey,
         user: &User,
     ) -> Result<Response, JiraClientError> {
-        let url = self.api_url(format!("/issue/{}/assignee", issue_key).as_str())?;
+        let url = self.api_url(&format!("/issue/{}/assignee", issue_key))?;
 
         let body = PostAssignBody::from(user.clone());
         let response = self.client.put(url).json(&body).send().await?;
@@ -343,7 +343,7 @@ impl JiraAPIClient {
             format!("expand=jql&maxResults={}", self.max_results)
         };
 
-        url.set_query(Some(query.as_str()));
+        url.set_query(Some(&query));
 
         let response = self.client.get(url).send().await?;
         let body = response.json::<GetFilterResponseBody>().await?;
