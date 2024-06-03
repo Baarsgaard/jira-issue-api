@@ -251,11 +251,11 @@ pub struct Field {
 #[serde(rename_all = "camelCase")]
 pub struct FieldSchema {
     pub custom: Option<FieldSchemaType>,
-    pub custom_id: Option<String>,
+    pub custom_id: Option<u32>,
     pub items: Option<FieldSchemaType>,
     pub system: Option<FieldSchemaType>,
     #[serde(alias = "type")]
-    pub field_type: Option<u32>,
+    pub field_type: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -285,6 +285,8 @@ pub enum FieldSchemaType {
     Votes,
     Watches,
     Worklog,
+    #[serde(untagged)]
+    Custom(String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -294,7 +296,7 @@ pub struct Filter {
     pub self_reference: String,
     pub id: String,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub owner: User,
     pub jql: String,
     pub view_url: String,
