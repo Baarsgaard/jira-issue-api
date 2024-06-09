@@ -188,7 +188,7 @@ pub struct Issue {
     pub id: String,
     pub key: IssueKey,
     #[serde(alias = "self")]
-    pub self_reference: String,
+    pub self_ref: String,
     /// Some when expanding names on get_issue
     pub names: Option<HashMap<String, String>>,
 }
@@ -293,7 +293,7 @@ pub enum FieldSchemaType {
 #[serde(rename_all = "camelCase")]
 pub struct Filter {
     #[serde(alias = "self")]
-    pub self_reference: String,
+    pub self_ref: String,
     pub id: String,
     pub name: String,
     pub description: Option<String>,
@@ -410,7 +410,7 @@ pub enum TransitionFieldAllowedValue {
     Str(String),
     Object {
         #[serde(alias = "self")]
-        self_reference: String,
+        self_ref: String,
         #[serde(alias = "name")]
         value: String,
         id: String,
