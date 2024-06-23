@@ -216,10 +216,11 @@ impl JiraAPIClient {
     ) -> Result<Issue, JiraClientError> {
         let mut url = self.api_url(&format!("issue/{}", issue_key))?;
 
-        if expand_options.is_some() && !expand_options.unwrap().starts_with("expand=") {
-            url.set_query(Some(&format!("expand={}", expand_options.unwrap())));
-        } else {
-            url.set_query(expand_options)
+        match expand_options {
+            Some(expand_options) if !expand_options.starts_with("expand=") => {
+                url.set_query(Some(&format!("expand={expand_options}")))
+            }
+            expand_options => url.set_query(expand_options),
         }
 
         let response = self.client.get(url).send().await?;
