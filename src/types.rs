@@ -346,7 +346,13 @@ impl Display for Issue {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct IssueKey(pub String);
+pub struct IssueKey(String);
+
+impl From<IssueKey> for String {
+    fn from(val: IssueKey) -> Self {
+        val.0
+    }
+}
 
 impl Display for IssueKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
