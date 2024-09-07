@@ -1,4 +1,4 @@
 mod client;
-pub mod types;
+pub mod models;
 
 pub use crate::client::*;

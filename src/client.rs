@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::models::*;
 use base64::{engine::general_purpose, Engine as _};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::{Client, ClientBuilder, Response, Url};
@@ -98,7 +98,7 @@ impl JiraAPIClient {
     /// Instantiate a reusable API client.
     ///
     /// ```rust
-    /// use jira_issue_api::types::*;
+    /// use jira_issue_api::models::*;
     /// use jira_issue_api::{Credential, JiraClientConfig, JiraAPIClient};
     ///
     /// let anon = Credential::Anonymous;
