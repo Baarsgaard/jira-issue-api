@@ -163,7 +163,7 @@ pub struct PostIssueQueryBody {
     pub jql: String,
     pub max_results: u32,
     pub start_at: u32,
-    /// Expects camelCase and is case-sensitive
+    /// Expects camelCase and the API is case-sensitive
     pub expand: Option<Vec<String>>,
 }
 
@@ -183,13 +183,13 @@ pub struct PostIssueQueryResponseBody {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Issue {
-    pub expand: String,
+    pub expand: Option<String>,
     pub fields: IssueFields,
     pub id: String,
     pub key: IssueKey,
     #[serde(alias = "self")]
     pub self_ref: String,
-    /// Some when expanding names on get_issue
+    /// Some when expanding names on query_issue
     pub names: Option<HashMap<String, String>>,
 }
 
