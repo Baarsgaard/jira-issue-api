@@ -144,7 +144,7 @@ impl JiraAPIClient {
 
     pub async fn query_issues(
         &self,
-        query: &String,
+        query: &str,
         fields: Option<Vec<String>>,
         expand_options: Option<Vec<String>>,
     ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
@@ -307,7 +307,7 @@ impl JiraAPIClient {
 
     /// cloud:       user.account_id
     /// data-center: user.name
-    pub async fn get_user(&self, user: String) -> Result<User, JiraClientError> {
+    pub async fn get_user(&self, user: &str) -> Result<User, JiraClientError> {
         let url = self.api_url("user")?;
 
         let key = match cfg!(feature = "cloud") {
@@ -339,7 +339,7 @@ impl JiraAPIClient {
     #[cfg(feature = "cloud")]
     pub async fn search_filters(
         &self,
-        filter: Option<String>,
+        filter: Option<&str>,
     ) -> Result<GetFilterSearchResponseBody, JiraClientError> {
         let mut url = self.api_url("filter/search")?;
         let query = if let Some(filter) = filter {
