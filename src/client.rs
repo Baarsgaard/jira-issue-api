@@ -1,6 +1,6 @@
 use crate::models::*;
-use base64::{engine::general_purpose, Engine as _};
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use base64::{Engine as _, engine::general_purpose};
+use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use reqwest::{Client, ClientBuilder, Response, Url};
 use std::{convert::From, time::Duration};
 use thiserror::Error;
