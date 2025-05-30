@@ -216,15 +216,15 @@ pub struct IssueFields {
 
     // pub project: Project,            //TODO
     // pub issuetype: IssueType,        //TODO
-    // pub status: Status,              //TODO
+    pub status: Option<Status>,
     // pub comment: CommentContainer,   //TODO
     // pub resolution: Resolution,      //TODO
     // pub priority: Priority,          //TODO
     // pub progress: Progress,          //TODO
-    // pub subtasks: Vec<Value>,        //TODO
+    pub subtasks: Option<Vec<SubTask>>,
     // pub issue_links: Vec<Value>,     //TODO
     // pub votes: Votes,                //TODO
-    // pub worklog: Worklog,            //TODO
+    pub worklog: Option<WorkLog>,
     // pub timetracking: TimeTracking,  //TODO
     // pub watches: Watches,            //TODO
     // pub fix_versions: Vec<Version>,  //TODO
@@ -329,6 +329,131 @@ pub struct Component {
     pub name: String,
     #[serde(alias = "self")]
     pub self_ref: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Status {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub description: String,
+    #[serde(alias = "iconUrl")]
+    pub icon_url: String,
+    pub name: String,
+    pub id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct WorkLog {
+    #[serde(alias = "startAt")]
+    pub start_at: usize,
+    #[serde(alias = "maxResults")]
+    pub max_results: usize,
+    pub total: usize,
+    #[serde(alias = "worklogs")]
+    pub work_logs: Vec<WorkLogItem>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct WorkLogItem {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub author: Author,
+    #[serde(alias = "updateAuthor")]
+    pub update_author: Author,
+    pub comment: String,
+    pub created: String, // TODO: chrono?
+    pub updated: String,
+    pub started: String,
+    #[serde(alias = "timeSpent")]
+    pub time_spent: String,
+    #[serde(alias = "timeSpentSeconds")]
+    pub time_spent_seconds: usize,
+    pub id: String,
+    #[serde(alias = "issueId")]
+    pub issue_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Author {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub name: String,
+    pub key: String,
+    #[serde(alias = "emailAddress")]
+    pub email_address: String,
+    #[serde(alias = "avatarUrls")]
+    pub avatar_urls: AvatarUrls,
+    #[serde(alias = "displayName")]
+    pub display_name: String,
+    pub active: bool,
+    #[serde(alias = "timeZone")]
+    pub time_zone: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct AvatarUrls {
+    #[serde(rename = "48x48")]
+    avatar_48x48: String,
+    #[serde(rename = "24x24")]
+    avatar_24x24: String,
+    #[serde(rename = "16x16")]
+    avatar_16x16: String,
+    #[serde(rename = "32x32")]
+    avatar_32x32: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SubTask {
+    pub id: String,
+    pub key: String,
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub fields: SubTaskFields,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SubTaskFields {
+    pub summary: String,
+    pub status: SubTaskFieldsStatus,
+    #[serde(alias = "issueType")]
+    pub issue_type: SubTaskFieldsIssueType,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SubTaskFieldsStatus {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub description: String,
+    #[serde(alias = "iconUrl")]
+    pub icon_url: String,
+    pub name: String,
+    pub id: String,
+    #[serde(alias = "statusCategory")]
+    pub status_category: SubTaskFieldsStatusCategory,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SubTaskFieldsStatusCategory {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub id: String,
+    pub key: String,
+    #[serde(alias = "colorName")]
+    pub color_name: String,
+    pub name: String,
+}
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SubTaskFieldsIssueType {
+    #[serde(alias = "self")]
+    pub self_ref: String,
+    pub id: String,
+    pub description: String,
+    #[serde(alias = "iconUrl")]
+    pub icon_url: String,
+    pub name: String,
+    pub subtask: bool,
+    #[serde(alias = "avatarId")]
+    pub avatar_id: usize,
 }
 
 impl Display for Issue {
