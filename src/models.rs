@@ -552,9 +552,9 @@ pub enum TransitionFieldAllowedValue {
 pub struct TransitionExpandedFieldsSchema {
     #[serde(alias = "type")]
     pub schema_type: String,
-    pub items: String,
-    pub custom: String,
-    pub custom_id: u32,
+    pub items: Option<String>,
+    pub custom: Option<String>,
+    pub custom_id: Option<u32>,
     #[cfg(not(feature = "cloud"))]
     pub system: Option<String>,
 }
@@ -565,14 +565,9 @@ pub struct PostTransitionIdBody {
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct PostTransitionFieldBody {
-    pub name: String,
-}
-
-#[derive(Serialize, Debug, Clone)]
 pub struct PostTransitionBody {
     pub transition: PostTransitionIdBody,
-    pub fields: Option<HashMap<String, PostTransitionFieldBody>>,
+    pub fields: Option<serde_json::Value>,
     pub update: Option<PostTransitionUpdateField>,
 }
 
