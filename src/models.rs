@@ -565,9 +565,14 @@ pub struct PostTransitionIdBody {
 }
 
 #[derive(Serialize, Debug, Clone)]
+pub struct PostTransitionFieldBody {
+    pub name: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub struct PostTransitionBody {
     pub transition: PostTransitionIdBody,
-    pub fields: Option<serde_json::Value>,
+    pub fields: Option<PostTransitionFieldBody>,
     pub update: Option<PostTransitionUpdateField>,
 }
 
