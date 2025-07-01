@@ -151,7 +151,7 @@ impl TryFrom<String> for WorklogDuration {
             JiraClientError::TryFromError("Unexpected worklog duration input".to_string())
         })? * f64::from(multiplier);
 
-        Ok(WorklogDuration(format!("{:.0}", seconds)))
+        Ok(WorklogDuration(format!("{seconds:.0}")))
     }
 }
 
