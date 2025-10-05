@@ -158,6 +158,10 @@ impl JiraAPIClient {
             fields,
         };
 
+        // Scuffed Debug
+        // let res2 = self.client.post(url.clone()).json(&body).send().await?;
+        // let _ = std::fs::write("/home/ste/res.json", res2.text().await.unwrap());
+
         let res = self.client.post(url).json(&body).send().await?;
 
         if !self.anonymous_access
@@ -235,12 +239,10 @@ impl JiraAPIClient {
     ) -> Result<GetTransitionsBody, JiraClientError> {
         let mut url = self.api_url(&format!("issue/{issue_key}/transitions"))?;
 
-        if expand_options.is_none() {
-            url.set_query(Some("expand=transitions.fields"));
-        } else if expand_options.is_some() && expand_options.unwrap().starts_with("expand=") {
-            url.set_query(expand_options);
-        } else {
-            url.set_query(Some(&format!("expand={}", expand_options.unwrap())));
+        match expand_options {
+            None => url.set_query(Some("expand=transitions.fields")),
+            Some(e) if e.starts_with("expand=") => url.set_query(expand_options),
+            Some(e) => url.set_query(Some(&format!("expand={}", e))),
         }
 
         let response = self.client.get(url).send().await?;
@@ -277,9 +279,6 @@ impl JiraAPIClient {
             query.push_str(&format!("&issueKey={issue_key}"));
         }
         if let Some(username) = params.username.clone() {
-            #[cfg(feature = "cloud")]
-            query.push_str(&format!("&query={username}"));
-            #[cfg(not(feature = "cloud"))]
             query.push_str(&format!("&username={username}"));
         }
         if let Some(project) = params.project.clone() {
@@ -305,17 +304,15 @@ impl JiraAPIClient {
         Ok(response)
     }
 
-    /// cloud:       user.account_id
-    /// data-center: user.name
     pub async fn get_user(&self, user: &str) -> Result<User, JiraClientError> {
         let url = self.api_url("user")?;
 
-        let key = match cfg!(feature = "cloud") {
-            true => "accountId",
-            false => "username",
-        };
-
-        let response = self.client.get(url).query(&[(key, user)]).send().await?;
+        let response = self
+            .client
+            .get(url)
+            .query(&[("username", user)])
+            .send()
+            .await?;
         let body = response.json::<User>().await?;
         Ok(body)
     }
@@ -333,28 +330,6 @@ impl JiraAPIClient {
 
         let response = self.client.get(url).send().await?;
         let body = response.json::<Filter>().await?;
-        Ok(body)
-    }
-
-    #[cfg(feature = "cloud")]
-    pub async fn search_filters(
-        &self,
-        filter: Option<&str>,
-    ) -> Result<GetFilterSearchResponseBody, JiraClientError> {
-        let mut url = self.api_url("filter/search")?;
-        let query = if let Some(filter) = filter {
-            format!(
-                "expand=jql&maxResults={}&filterName={filter}",
-                self.max_results
-            )
-        } else {
-            format!("expand=jql&maxResults={}", self.max_results)
-        };
-
-        url.set_query(Some(&query));
-
-        let response = self.client.get(url).send().await?;
-        let body = response.json::<GetFilterSearchResponseBody>().await?;
         Ok(body)
     }
 }

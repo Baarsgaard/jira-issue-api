@@ -1,7 +1,7 @@
 [package]
 name = "jira-issue-api"
 description = "Personal library for interfacing with Jira issues"
-version = "0.5.7"
+version = "0.6.0"
 edition = "2024"
 authors = ["Steffen Baarsgaard <sbaarsgaard@gmail.com>"]
 repository = "https://github.com/baarsgaard/jira-issue-api"
@@ -19,8 +19,3 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 url = "2.5"
-
-[features]
-default = []
-cloud = []
-data-center = []

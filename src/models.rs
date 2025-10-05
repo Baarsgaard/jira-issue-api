@@ -1,3 +1,4 @@
+use crate::JiraClientError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,74 +9,25 @@ use std::{
     sync::OnceLock,
 };
 
-#[cfg(not(feature = "cloud"))]
-mod versioned {
-    use super::*;
-
-    #[derive(Deserialize, Serialize, Debug, Clone)]
-    #[serde(rename_all = "camelCase")]
-    pub struct User {
-        pub active: bool,
-        pub display_name: String,
-        pub deleted: Option<bool>,
-        pub name: String,
-    }
-
-    #[derive(Serialize, Debug, Clone)]
-    pub struct PostAssignBody {
-        pub name: String,
-    }
-
-    impl From<User> for PostAssignBody {
-        fn from(value: User) -> Self {
-            PostAssignBody { name: value.name }
-        }
-    }
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct User {
+    pub active: bool,
+    pub display_name: String,
+    pub deleted: Option<bool>,
+    pub name: String,
 }
 
-#[cfg(feature = "cloud")]
-mod versioned {
-    use super::*;
-
-    #[derive(Deserialize, Debug, Clone)]
-    #[serde(rename_all = "camelCase")]
-    pub struct GetFilterSearchResponseBody {
-        // https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-filters/#api-rest-api-2-filter-search-get
-        pub max_results: u32,
-        pub start_at: u32,
-        pub total: u32,
-        pub is_last: bool,
-        #[serde(alias = "values")]
-        pub filters: Vec<Filter>,
-    }
-
-    #[derive(Deserialize, Serialize, Debug, Clone)]
-    #[serde(rename_all = "camelCase")]
-    pub struct User {
-        pub active: bool,
-        pub display_name: String,
-        pub account_id: String,
-        pub email_address: String,
-    }
-
-    #[derive(Serialize, Debug, Clone)]
-    #[serde(rename_all = "camelCase")]
-    pub struct PostAssignBody {
-        pub account_id: String,
-    }
-
-    impl From<User> for PostAssignBody {
-        fn from(value: User) -> Self {
-            PostAssignBody {
-                account_id: value.account_id,
-            }
-        }
-    }
+#[derive(Serialize, Debug, Clone)]
+pub struct PostAssignBody {
+    pub name: String,
 }
 
-pub use versioned::*;
-
-use crate::JiraClientError;
+impl From<User> for PostAssignBody {
+    fn from(value: User) -> Self {
+        PostAssignBody { name: value.name }
+    }
+}
 
 /// Define query parameters
 #[derive(Debug, Clone)]
@@ -171,11 +123,11 @@ pub struct PostIssueQueryBody {
 #[serde(rename_all = "camelCase")]
 pub struct PostIssueQueryResponseBody {
     /// https://docs.atlassian.com/software/jira/docs/api/REST/7.6.1/#api/2/search
-    pub expand: String,
-    pub issues: Vec<Issue>,
-    pub max_results: u32,
-    pub start_at: u32,
-    pub total: u32,
+    pub expand: Option<String>,
+    pub issues: Option<Vec<Issue>>,
+    pub max_results: Option<u32>,
+    pub start_at: Option<u32>,
+    pub total: Option<u32>,
     /// Some when expanding names on query_issues
     pub names: Option<HashMap<String, String>>,
 }
@@ -185,12 +137,15 @@ pub struct PostIssueQueryResponseBody {
 pub struct Issue {
     pub expand: Option<String>,
     pub fields: IssueFields,
-    pub id: String,
+    pub id: Option<serde_json::Value>,
     pub key: IssueKey,
     #[serde(alias = "self")]
     pub self_ref: String,
     /// Some when expanding names on query_issue
     pub names: Option<HashMap<String, String>>,
+
+    #[serde(flatten)]
+    pub remainder: BTreeMap<String, Value>,
 }
 
 /// All fields are optional as it's possible to define what fields you want in the request
@@ -415,7 +370,7 @@ pub struct SubTask {
 pub struct SubTaskFields {
     pub summary: String,
     pub status: SubTaskFieldsStatus,
-    #[serde(alias = "issueType")]
+    #[serde(alias = "issuetype")]
     pub issue_type: SubTaskFieldsIssueType,
 }
 
@@ -436,7 +391,7 @@ pub struct SubTaskFieldsStatus {
 pub struct SubTaskFieldsStatusCategory {
     #[serde(alias = "self")]
     pub self_ref: String,
-    pub id: String,
+    pub id: u32,
     pub key: String,
     #[serde(alias = "colorName")]
     pub color_name: String,
@@ -555,7 +510,6 @@ pub struct TransitionExpandedFieldsSchema {
     pub items: Option<String>,
     pub custom: Option<String>,
     pub custom_id: Option<u32>,
-    #[cfg(not(feature = "cloud"))]
     pub system: Option<String>,
 }
 
