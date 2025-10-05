@@ -146,7 +146,7 @@ impl JiraAPIClient {
         &self,
         query: &str,
         fields: Option<Vec<String>>,
-        expand_options: Option<Vec<String>>,
+        expand: Option<Vec<String>>,
     ) -> Result<PostIssueQueryResponseBody, JiraClientError> {
         let url = self.api_url("search")?;
 
@@ -154,7 +154,7 @@ impl JiraAPIClient {
             jql: query.to_owned(),
             start_at: 0,
             max_results: self.max_results,
-            expand: expand_options,
+            expand,
             fields,
         };
 
