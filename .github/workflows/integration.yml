@@ -28,9 +28,6 @@ jobs:
         build:
           - x86_64-linux
           # - x86_64-windows
-        feature:
-          - data-center
-          - cloud
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
@@ -49,11 +46,11 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: cargo-test-${{ matrix.build }}-${{ matrix.feature }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: cargo-test-${{ matrix.build }}-${{ matrix.feature }}-
+          key: cargo-test-${{ matrix.build }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: cargo-test-${{ matrix.build }}-
 
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --features ${{ matrix.feature }}
+      - run: cargo test
 
   lint:
     name: Cargo check/clippy
