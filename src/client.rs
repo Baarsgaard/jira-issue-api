@@ -198,7 +198,7 @@ impl JiraAPIClient {
             ));
         }
 
-        let response = self.client.post(url).json(&body).send().await?;
+        let response: Response = self.client.post(url).json(&body).send().await?;
         Ok(response)
     }
 
@@ -305,14 +305,10 @@ impl JiraAPIClient {
     }
 
     pub async fn get_user(&self, user: &str) -> Result<User, JiraClientError> {
-        let url = self.api_url("user")?;
+        let mut url = self.api_url("user")?;
+        url.set_query(Some(&format!("username={user}")));
 
-        let response = self
-            .client
-            .get(url)
-            .query(&[("username", user)])
-            .send()
-            .await?;
+        let response: Response = self.client.get(url).send().await?;
         let body = response.json::<User>().await?;
         Ok(body)
     }
