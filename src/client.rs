@@ -2,7 +2,6 @@ use crate::models::*;
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use reqwest::{Certificate, Client, ClientBuilder, Response, Url};
-use std::fs;
 use std::{convert::From, time::Duration};
 use thiserror::Error;
 use url::ParseError;
@@ -37,8 +36,8 @@ pub struct JiraClientConfig {
     pub url: String,
     pub timeout: u64,
     pub insecure_skip_tls_verify: bool,
-    // Path to PEM encoded certificate file
-    pub tls_ca_certificate_path: Option<String>,
+    /// PEM encoded certificate file
+    pub ca_certificate: Option<String>,
 }
 
 /// Supported Authentication methods
@@ -121,27 +120,22 @@ impl JiraAPIClient {
     ///     url: "https://domain.atlassian.net".to_string(),
     ///     timeout: 10u64,
     ///     insecure_skip_tls_verify: false,
-    ///     tls_ca_certificate_path: None,
+    ///     ca_certificate: None,
     /// };
     ///
     /// let client = JiraAPIClient::new(&jira_cfg).unwrap();
     /// ```
     pub fn new(cfg: &JiraClientConfig) -> Result<JiraAPIClient, JiraClientError> {
-        let ca_certs: Vec<Certificate> = if let Some(path) = cfg.tls_ca_certificate_path.clone() {
-            let cert_str = fs::read_to_string(path)?;
-            vec![Certificate::from_pem(&cert_str.into_bytes())?]
-        } else {
-            Vec::new()
-        };
-
-        let client = ClientBuilder::new()
+        let mut builder = ClientBuilder::new()
             .default_headers(JiraAPIClient::build_headers(&cfg.credential))
             .https_only(true)
             .timeout(Duration::from_secs(cfg.timeout))
             .danger_accept_invalid_certs(cfg.insecure_skip_tls_verify)
-            .tls_certs_only(ca_certs)
-            .connection_verbose(false)
-            .build()?;
+            .connection_verbose(false);
+
+        if let Some(ca) = cfg.ca_certificate.clone() {
+            builder = builder.tls_certs_only(vec![Certificate::from_pem(ca.as_bytes())?])
+        };
 
         let mut url = Url::parse(&cfg.url)?;
         url.set_path("/");
@@ -150,7 +144,7 @@ impl JiraAPIClient {
 
         Ok(JiraAPIClient {
             url,
-            client,
+            client: builder.build()?,
             max_results: cfg.max_query_results,
             anonymous_access: cfg.credential.eq(&Credential::Anonymous),
         })
