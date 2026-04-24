@@ -43,10 +43,10 @@ pub enum Credential {
     /// Omit Authorization header
     Anonymous,
     /// User email/username and token
-    /// Authorization: Basic <b64 login:token>
+    /// Authorization: Basic Base64_token
     ApiToken { login: String, token: String },
     /// Personal Access Token
-    /// Authorization: Bearer <PAT>
+    /// Authorization: Bearer PersonalAccessToken(PAT)
     PersonalAccessToken(String),
 }
 
