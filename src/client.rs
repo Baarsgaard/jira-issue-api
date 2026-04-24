@@ -1,13 +1,16 @@
 use crate::models::*;
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
-use reqwest::{Client, ClientBuilder, Response, Url};
+use reqwest::{Certificate, Client, ClientBuilder, Response, Url};
+use std::fs;
 use std::{convert::From, time::Duration};
 use thiserror::Error;
 use url::ParseError;
 
 #[derive(Error, Debug)]
 pub enum JiraClientError {
+    #[error("Unable to reade file {0}")]
+    ReadFileError(#[from] std::io::Error),
     #[error("Request failed")]
     HttpError(#[from] reqwest::Error),
     #[error("Authentication failed")]
@@ -33,7 +36,9 @@ pub struct JiraClientConfig {
     pub max_query_results: u32,
     pub url: String,
     pub timeout: u64,
-    pub tls_accept_invalid_certs: bool,
+    pub insecure_skip_tls_verify: bool,
+    // Path to PEM encoded certificate file
+    pub tls_ca_certificate_path: Option<String>,
 }
 
 /// Supported Authentication methods
@@ -115,17 +120,26 @@ impl JiraAPIClient {
     ///     max_query_results: 50u32,
     ///     url: "https://domain.atlassian.net".to_string(),
     ///     timeout: 10u64,
-    ///     tls_accept_invalid_certs: false,
+    ///     insecure_skip_tls_verify: false,
+    ///     tls_ca_certificate_path: None,
     /// };
     ///
     /// let client = JiraAPIClient::new(&jira_cfg).unwrap();
     /// ```
     pub fn new(cfg: &JiraClientConfig) -> Result<JiraAPIClient, JiraClientError> {
+        let ca_certs: Vec<Certificate> = if let Some(path) = cfg.tls_ca_certificate_path.clone() {
+            let cert_str = fs::read_to_string(path)?;
+            vec![Certificate::from_pem(&cert_str.into_bytes())?]
+        } else {
+            Vec::new()
+        };
+
         let client = ClientBuilder::new()
             .default_headers(JiraAPIClient::build_headers(&cfg.credential))
-            .danger_accept_invalid_certs(cfg.tls_accept_invalid_certs)
             .https_only(true)
             .timeout(Duration::from_secs(cfg.timeout))
+            .danger_accept_invalid_certs(cfg.insecure_skip_tls_verify)
+            .tls_certs_only(ca_certs)
             .connection_verbose(false)
             .build()?;
 
