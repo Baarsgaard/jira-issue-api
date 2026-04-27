@@ -335,7 +335,7 @@ pub struct Author {
     pub name: String,
     pub key: String,
     #[serde(alias = "emailAddress")]
-    pub email_address: String,
+    pub email_address: Option<String>,
     #[serde(alias = "avatarUrls")]
     pub avatar_urls: AvatarUrls,
     #[serde(alias = "displayName")]
