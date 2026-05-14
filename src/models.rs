@@ -441,12 +441,13 @@ impl Display for IssueKey {
 }
 
 static ISSUE_RE: OnceLock<Regex> = OnceLock::new();
+static RAW_RE: &str = r"([A-Z][A-Z0-9_]+-[0-9]+)";
 
 impl TryFrom<String> for IssueKey {
     type Error = JiraClientError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let issue_re = ISSUE_RE
-            .get_or_init(|| Regex::new(r"([A-Z]{2,}-[0-9]+)").expect("Unable to compile ISSUE_RE"));
+        let issue_re =
+            ISSUE_RE.get_or_init(|| Regex::new(RAW_RE).expect("Unable to compile ISSUE_RE"));
 
         let upper = value.to_uppercase();
         let issue_key = match issue_re.captures(&upper) {
@@ -612,5 +613,27 @@ mod tests {
         let key = String::from("JB-1");
         let issue = IssueKey(key.clone());
         assert_eq!(key, issue.to_string());
+    }
+
+    #[test]
+    fn valid_issuekeys() {
+        let keys = vec!["JB-1", "JB1-2", "JB_1-3", "1JB-4"]; // Last one is technically valid as the preceding number is ignored
+
+        for k in keys {
+            println!("{k}");
+            let key = IssueKey::try_from(String::from(k));
+            assert!(key.is_ok())
+        }
+    }
+
+    #[test]
+    fn invalid_issuekeys() {
+        let keys = vec!["JB-", "-2", "J-B-3"];
+
+        for k in keys {
+            println!("{k}");
+            let key = IssueKey::try_from(String::from(k));
+            assert!(key.is_err())
+        }
     }
 }
